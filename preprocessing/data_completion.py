@@ -5,6 +5,11 @@ from sklearn.preprocessing import StandardScaler
 from preprocessing.conversions import Columns
 
 
+"""
+this file contains different data completion strategies
+"""
+
+
 class DataComplete(ABC):
     @abstractmethod
     def complete(self, data: pd.DataFrame):

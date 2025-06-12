@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 import numpy as np
 from typing import Callable, Optional, Any
+from sklearn.preprocessing import StandardScaler
 
 from preprocessing.data_completion import DataComplete, DefaultValue
 from preprocessing.conversions import (
@@ -355,7 +356,8 @@ def rank_surgery_by_name(surgery_name):
 
 
 def preprocess(data: pd.DataFrame,
-               data_complete: DataComplete = DefaultValue()) -> pd.DataFrame:
+               data_complete: DataComplete = DefaultValue(),
+               normalize: bool = True) -> pd.DataFrame:
     data[Columns.FORM] = data[Columns.FORM].map({
         "אומדן סימפטומים ודיווח סיעודי": 3,
         "אנמנזה סיעודית": 1,
@@ -424,7 +426,7 @@ def preprocess(data: pd.DataFrame,
         "נקיים": 0,
         "ללא": 1,
         "נגועים": 2,
-        None: np.nan
+        None: MISSING_VALUE_DEFAULT
     })
     data[Columns.LYMPH_NODES_MARK] = data[
         Columns.LYMPH_NODES_MARK].apply(filter_tnm_n)
@@ -525,14 +527,17 @@ def preprocess(data: pd.DataFrame,
         Columns.SURGERY_BEFORE_AFTER_ACTUAL_ACTIVITY].apply(rank_surgery_by_name)
     data.drop(columns=Columns.ID, inplace=True)
 
-    # data = data.fillna(0)
     data = data_complete.complete(data)
+    if normalize:
+        scaled_array = StandardScaler().fit_transform(data)
+        data = pd.DataFrame(scaled_array, columns=data.columns,
+                            index=data.index)
 
     return data
 
 
 if __name__ == "__main__":
-    df = pd.read_csv('../train_test_splits/train.feats.csv',
+    df = pd.read_csv('../train_test_splits/train_split.feats.csv',
                      encoding='utf-8-sig')
     # print(df.columns)
     print(preprocess(df).info())
