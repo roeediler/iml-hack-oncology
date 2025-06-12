@@ -438,7 +438,27 @@ def preprocess(data: pd.DataFrame) -> pd.DataFrame:
         "ימין": 1,
         "דו צדדי": 2
     })
-    data.drop(columns=Columns.STAGE, inplace=True)  # TODO
+    data[Columns.STAGE] = data[Columns.STAGE].apply(replace_contains(
+        [
+            ("stage0is", 0.0),
+            ("stage0a", 0.1),
+            ("stage0", 0.2),
+            ("stage1a", 1.1),
+            ("stage1b", 1.2),
+            ("stage1c", 1.3),
+            ("stage1", 1.0),
+            ("stage2a", 2.1),
+            ("stage2b", 2.2),
+            ("stage2", 2.0),
+            ("stage3a", 3.1),
+            ("stage3b", 3.2),
+            ("stage3c", 3.3),
+            ("stage3", 3.0),
+            ("stage4", 4.0),
+            ("la", 3.5),  # Or use None
+        ],
+        mapper=to_lower
+    ))
     for col in Columns.SURGERY_DATES_NAMES:
         data[col] = pd.to_datetime(data[col], errors='coerce')
     data[Columns.SURGERY_DATE_AVERAGE_WAIT] = data.apply(
