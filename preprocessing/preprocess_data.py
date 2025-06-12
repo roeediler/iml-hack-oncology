@@ -39,7 +39,11 @@ MISSING_VALUE_DEFAULT = -1
 
 
 def to_lower(val: str) -> str:
-    return val.lower()
+    return str(val).lower()
+
+
+def to_upper(val: str) -> str:
+    return str(val).upper()
 
 
 def extract_percent(s):
@@ -198,15 +202,9 @@ def filter_histological_diagnosis(val):
 
 
 def preprocess(data: pd.DataFrame) -> pd.DataFrame:
-    # data[Columns.BASIC_STAGE].map({
-    #     "Null": 0,
-    #     "c - Clinical": 1,
-    #     "p - Pathological": 2,
-    #     "r - Reccurent": 3
-    # })
     data[Columns.BASIC_STAGE].apply(replace_contains(
         [
-            ("Null", 0),
+            ("null", 0),
             ("c", 1),
             ("p", 2),
             ("r", 3),
@@ -228,31 +226,35 @@ def preprocess(data: pd.DataFrame) -> pd.DataFrame:
 
     data.drop(columns=Columns.LYMPHOVASCULAR_INVASION)
     data[Columns.K167].apply(filter_k167)
-    data[Columns.LYMPHATIC_PENETRATION].map({
-        'Null': 0,
-        'L0 - No Evidence of invasion': 1,
-        'L1 - Evidence of invasion': 2,
-        'L1 - Evidence of invasion of superficial Lym.': 2,
-        'L2 - Evidence of invasion of depp Lym.': 3,
-        None: 0,  # or np.nan if you want to impute later
-    })
-    # data[Columns]
+    data[Columns.LYMPHATIC_PENETRATION].apply(replace_contains(
+        [
+            ("NULL", 0),
+            ("L0", 1),
+            ("L1", 2),
+            ("L2", 3)
+        ],
+        mapper=to_upper,
+        default=0
+    ))
 
     data[Columns.SIDE].map({
         "": 0,
+        None: 0,
         "שמאל": 1,
         "ימין": 1,
         "דו צדדי": 2
     })
-    data[Columns.METASTASES_MARK].map({
-        "M0": 0,                # No metastasis
-        "MX": 1,                # Unknown
-        "Not yet Established": 1,  # Also unknown
-        None: 1,                # missing data
-        "M1": 2,                # Metastasis
-        "M1a": 3,               # Metastasis - subcategory
-        "M1b": 4                # More severe/metastasis - subcategory
-    })
+    data[Columns.METASTASES_MARK].apply(replace_contains(
+        [
+            ("m0", 0),
+            ("mx", 1),
+            ("m1a", 3),
+            ("m1b", 4),
+            ("m1", 2)
+        ],
+        mapper=to_lower,
+        default=1
+    ))
     data[Columns.MARGIN_TYPE].map({
         "נקיים": 0,
         "ללא": 1,
