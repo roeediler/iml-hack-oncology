@@ -1,8 +1,11 @@
 import pandas as pd
 import re
+from typing import Callable, Optional, Any
 
 from conversions import (Columns, month_prefix, equiv_low, equiv_mid,
                          equiv_high, equiv_neg, equiv_pos)
+
+MISSING_VALUE_DEFAULT = -1
 
 # Read the original CSV file
 
@@ -35,6 +38,10 @@ from conversions import (Columns, month_prefix, equiv_low, equiv_mid,
 # df_subset.to_csv('output.csv', index=False, encoding='utf-8-sig')
 
 
+def to_lower(val: str) -> str:
+    return val.lower()
+
+
 def extract_percent(s):
     match = re.search(r'(\d+(?:\.\d+)?)\s*%', s)
     return float(match.group(1)) if match else None
@@ -52,6 +59,22 @@ def extract_percent_range(s):
 def extract_first_number(s):
     match = re.search(r'\d+(?:\.\d+)?', s)
     return float(match.group()) if match else None
+
+
+def replace_contains(rules: list[tuple[str, int]],
+                     strong: bool = False,
+                     mapper: Optional[Callable] = None,
+                     default: Any = MISSING_VALUE_DEFAULT) -> Callable:
+    def inner(val: str):
+        if mapper is not None:
+            val = mapper(val)
+        if strong:
+            val = val.split(" -,")
+        for mark, rank in rules:
+            if mark in val:
+                return rank
+        return default
+    return inner
 
 
 def filter_her2(val: str) -> int:
@@ -91,6 +114,8 @@ def filter_her2(val: str) -> int:
         res += 10
     if type_ == 2:
         res += 30
+    if percent is not None:
+        res += percent / 25
     if status:
         res += 40
     if not status and status is not None:
@@ -139,14 +164,68 @@ def filter_k167(val: str) -> float:
     return 0
 
 
-def preprocess(data: pd.DataFrame):
-    data[Columns.BASIC_STAGE].map({
-        "Null": 0,
-        "c - Clinical": 1,
-        "p - Pathological": 2,
-        "r - Reccurent": 3
-    })
+def filter_histological_diagnosis(val):
+    val = str(val).upper()
+
+    if any(keyword in val for keyword in [
+        "BENIGN", "ADENOMA", "FIBROADENOMA", "PAPILLOMA", "PAPILLOMATOSIS"
+    ]):
+        return 0  # Benign
+
+    elif "IN SITU" in val or any(keyword in val for keyword in [
+        "DCIS", "LCIS", "INTRADUCTAL", "LOBULAR CARCINOMA IN SITU",
+        "CARCINOMA IN SITU"
+    ]):
+        return 1  # In situ carcinoma
+
+    elif any(keyword in val for keyword in [
+        "INFILTRATING", "INVASIVE", "COMEDO", "DUCTAL", "LOBULAR", "TUBULAR",
+        "MEDULLARY",
+        "MUCIN", "APOCRINE", "PAGET", "PHYLLODES"
+    ]):
+        return 2  # Invasive carcinoma
+
+    elif any(keyword in val for keyword in [
+        "NEUROENDOCRINE", "INFLAMMATORY", "MALIGNANT", "NOS", "CARCINOMA"
+    ]):
+        return 3  # Aggressive or unspecified carcinoma
+
+    else:
+        return 3  # Default to most severe if unrecognized
+
+
+# def filter_lymphatic_penetration
+
+
+def preprocess(data: pd.DataFrame) -> pd.DataFrame:
+    # data[Columns.BASIC_STAGE].map({
+    #     "Null": 0,
+    #     "c - Clinical": 1,
+    #     "p - Pathological": 2,
+    #     "r - Reccurent": 3
+    # })
+    data[Columns.BASIC_STAGE].apply(replace_contains(
+        [
+            ("Null", 0),
+            ("c", 1),
+            ("p", 2),
+            ("r", 3),
+        ],
+        strong=True,
+        mapper=to_lower
+    ))
     data[Columns.HER2].apply(filter_her2)
+    data[Columns.HISTOLOGICAL_DIAGNOSIS].apply(filter_histological_diagnosis)
+    data[Columns.HISTOLOGICAL_DEGREE].apply(replace_contains(
+        [
+            ("g1", 1),
+            ("g2", 2),
+            ("g3", 3),
+            ("g4", 4)
+        ],
+        mapper=to_lower
+    ))
+
     data.drop(columns=Columns.LYMPHOVASCULAR_INVASION)
     data[Columns.K167].apply(filter_k167)
     data[Columns.LYMPHATIC_PENETRATION].map({
@@ -157,6 +236,8 @@ def preprocess(data: pd.DataFrame):
         'L2 - Evidence of invasion of depp Lym.': 3,
         None: 0,  # or np.nan if you want to impute later
     })
+    # data[Columns]
+
     data[Columns.SIDE].map({
         "": 0,
         "שמאל": 1,
@@ -173,12 +254,13 @@ def preprocess(data: pd.DataFrame):
         "M1b": 4                # More severe/metastasis - subcategory
     })
     data[Columns.MARGIN_TYPE].map({
-        #update
         "נקיים": 0,
         "ללא": 1,
         "נגועים": 2,
         None: 3
     })
+
+    return data
 
 
 if __name__ == "__main__":
