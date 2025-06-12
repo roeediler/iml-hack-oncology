@@ -1,7 +1,5 @@
 import pandas as pd
 import re
-from datetime import datetime
-
 
 from conversions import (Columns, month_prefix, equiv_low, equiv_mid,
                          equiv_high, equiv_neg, equiv_pos)
@@ -140,20 +138,6 @@ def filter_k167(val: str) -> float:
 
     return 0
 
-#add col
-def Diagnosis_to_surg1(date_str1, date_str2):
-    try:
-        # Convert strings to datetime objects (ignore time)
-        date1 = datetime.strptime(date_str1.split()[0], '%d/%m/%Y')
-        date2 = datetime.strptime(date_str2.split()[0], '%d/%m/%Y')
-        diff = (date2 - date1).days
-        return diff if diff >= 0 else 0  # במידה והתוצאה שלילית, תחזיר 0
-    except Exception:
-        return 0
-
-
-
-
 
 def preprocess(data: pd.DataFrame):
     data[Columns.BASIC_STAGE].map({
@@ -195,7 +179,6 @@ def preprocess(data: pd.DataFrame):
         "נגועים": 2,
         None: 3
     })
-
 
 
 if __name__ == "__main__":
