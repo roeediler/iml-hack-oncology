@@ -505,7 +505,8 @@ def preprocess(data: pd.DataFrame,
             ("t2", 2),
             ("t3", 3),
             ("t4", 4)
-        ]
+        ],
+        mapper=to_lower
     ))
     data.drop(columns=Columns.TUMOR_DEPTH, inplace=True)
     data.drop(columns=Columns.TUMOR_WIDTH, inplace=True)
