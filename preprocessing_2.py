@@ -52,3 +52,66 @@ def filter_nodes_exam(val) -> float:
     except Exception:
         return 0  # On any unexpected error, return 0
 
+
+def rank_surgery_by_name(surgery_name):
+
+    if not surgery_name or pd.isna(surgery_name):
+        return 0  # No valid surgery info
+
+    name = str(surgery_name).lower()
+
+    # Define keyword groups by severity
+    major_keywords = ['mastectomy', 'כריתה', 'סרטן', 'tumor', 'גידול', 'oncology', 'removal']
+    moderate_keywords = ['biopsy', 'ביופסיה', 'excision', 'הוצאה']
+    minor_keywords = ['drainage', 'נקז', 'drain', 'cleaning', 'ניקוי']
+
+    # Check for major keywords
+    if any(k in name for k in major_keywords):
+        return 3
+
+    # Check for moderate keywords
+    if any(k in name for k in moderate_keywords):
+        return 2
+
+    # Check for minor keywords
+    if any(k in name for k in minor_keywords):
+        return 1
+
+    # Default if no keywords matched
+    return 1
+
+
+from datetime import datetime
+
+
+def aggressiveness_by_activity_timing(diagnosis_date, activity_date):
+
+    try:
+        if isinstance(diagnosis_date, str):
+            diagnosis_date = datetime.fromisoformat(diagnosis_date).date()  # convert and keep only date
+        elif isinstance(diagnosis_date, datetime):
+            diagnosis_date = diagnosis_date.date()
+
+        if isinstance(activity_date, str):
+            activity_date = datetime.fromisoformat(activity_date).date()  # convert and keep only date
+        elif isinstance(activity_date, datetime):
+            activity_date = activity_date.date()
+    except Exception:
+        return 0  # Invalid date format
+
+    diff = (diagnosis_date - activity_date).days
+
+    if diff <= 0:
+        return 0
+
+    if diff > 180:
+        return 1
+    elif diff > 90:
+        return 2
+    elif diff > 30:
+        return 3
+    else:
+        return 4
+
+
+
