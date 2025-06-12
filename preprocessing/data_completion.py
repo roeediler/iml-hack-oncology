@@ -2,6 +2,12 @@ import pandas as pd
 from abc import ABC, abstractmethod
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
+from preprocessing.conversions import Columns
+
+
+"""
+this file contains different data completion strategies
+"""
 
 
 class DataComplete(ABC):
@@ -11,12 +17,17 @@ class DataComplete(ABC):
 
 
 class Clustering(DataComplete):
-    def __init__(self, num_columns: int = 10, k: int = 50):
+    EXCLUDE_COLUMNS = [
+        Columns.DIAGNOSIS_DATE
+    ]
+
+    def __init__(self, num_columns: int = 8, k: int = 10):
         self.num_columns = num_columns
         self.k = k
 
     def complete(self, data: pd.DataFrame):
         columns = list(data.columns)
+        columns = [col for col in columns if col not in self.EXCLUDE_COLUMNS]
         columns.sort(key=lambda col: data[col].isna().sum())
         columns = columns[:self.num_columns]
         clustering_features = data[columns].copy()
@@ -31,22 +42,31 @@ class Clustering(DataComplete):
 
         # Add cluster labels to original DataFrame
         data["cluster"] = clusters
-
+        # data.to_csv("temp.csv", index=False, encoding='utf-8-sig')
         for col in data.columns:
-            if data[col].isna().sum() > 0:
-                data[col] = data.groupby("cluster")[col].transform(
-                    lambda x: x.fillna(x.median())  # or mean(), mode(), etc.
-                )
+            for i in range(self.k):
+                mean_val = data.loc[(data['cluster'] == i) & (
+                    data[col].notna()), col].mean()
+                if pd.isna(mean_val):
+                    mean_val = data[col].median()
+                    if pd.isna(mean_val):
+                        mean_val = 0
+                data.loc[(data['cluster'] == i) & (data[col].isna()), col] = mean_val
 
-        data.drop("cluster", inplace=True)
+        data.drop(columns="cluster", inplace=True)
 
         return data
 
 
 class Mean(DataComplete):
     def complete(self, data: pd.DataFrame):
-        data = data.apply(lambda col: col.fillna(
-            col.mean()) if pd.api.types.is_numeric_dtype(col) else col)
+        for col in data.columns:
+            mean_val = data[col].mean()
+            if pd.isna(mean_val):
+                mean_val = 0
+            data[col] = data[col].fillna(mean_val)
+        # data = data.apply(lambda col: col.fillna(
+        #     col.mean()) if pd.api.types.is_numeric_dtype(col) else col)
         return data
 
 
