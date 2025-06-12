@@ -49,6 +49,8 @@ class Clustering(DataComplete):
                     data[col].notna()), col].mean()
                 if pd.isna(mean_val):
                     mean_val = data[col].median()
+                    if pd.isna(mean_val):
+                        mean_val = 0
                 data.loc[(data['cluster'] == i) & (data[col].isna()), col] = mean_val
 
         data.drop(columns="cluster", inplace=True)
@@ -60,6 +62,8 @@ class Mean(DataComplete):
     def complete(self, data: pd.DataFrame):
         for col in data.columns:
             mean_val = data[col].mean()
+            if pd.isna(mean_val):
+                mean_val = 0
             data[col] = data[col].fillna(mean_val)
         # data = data.apply(lambda col: col.fillna(
         #     col.mean()) if pd.api.types.is_numeric_dtype(col) else col)

@@ -118,7 +118,10 @@ def filter_k167(val: str) -> float:
     if "score" in val:
         num = extract_first_number(val)
         if num is not None:
-            return num * 20
+            num *= 20
+            while num > 100:
+                num /= 10
+            return num
 
     num = extract_first_number(val)
     if num is not None:
@@ -128,16 +131,15 @@ def filter_k167(val: str) -> float:
 
         return num
 
-    # TODO - validate low, mid, high values against averages of valid data of column
     if equiv_low(val):
-        return 5
+        return 6
     if equiv_mid(val):
-        return 40
+        return 50
     if equiv_high(val):
         return 80
 
     if equiv_neg(val):
-        return 5
+        return 6
     if equiv_pos(val):
         return 80
 
@@ -218,7 +220,7 @@ def filter_nodes_exam(val) -> float:
         return MISSING_VALUE_DEFAULT
 
 
-def filter_tnm_n(val: str) -> int:
+def filter_tnm_n(val: str) -> float | int:
     if not isinstance(val, str):
         return -1
 
@@ -298,24 +300,17 @@ def keyword_surgery_score(surgery_strings, surgery_keywords):
 
 
 def aggressiveness_by_activity_timing(diagnosis_date, activity_date):
+    if pd.isna(diagnosis_date) or pd.isna(activity_date):
+        return 0
 
-    try:
-        if isinstance(diagnosis_date, str):
-            diagnosis_date = datetime.fromisoformat(diagnosis_date).date()  # convert and keep only date
-        elif isinstance(diagnosis_date, datetime):
-            diagnosis_date = diagnosis_date.date()
-
-        if isinstance(activity_date, str):
-            activity_date = datetime.fromisoformat(activity_date).date()  # convert and keep only date
-        elif isinstance(activity_date, datetime):
-            activity_date = activity_date.date()
-    except Exception:
-        return 0  # Invalid date format
-
-    diff = (diagnosis_date - activity_date).days
+    if isinstance(diagnosis_date, pd.Timestamp):
+        diagnosis_date = diagnosis_date.date()
+    if isinstance(activity_date, pd.Timestamp):
+        activity_date = activity_date.date()
+    diff = (activity_date - diagnosis_date).days
 
     if diff <= 0:
-        return 0
+        return MISSING_VALUE_DEFAULT
 
     if diff > 180:
         return 1
@@ -357,7 +352,7 @@ def rank_surgery_by_name(surgery_name):
 
 def preprocess(data: pd.DataFrame,
                data_complete: DataComplete = DefaultValue(),
-               normalize: bool = True) -> pd.DataFrame:
+               normalize: bool = False) -> pd.DataFrame:
     data[Columns.FORM] = data[Columns.FORM].map({
         "אומדן סימפטומים ודיווח סיעודי": 3,
         "אנמנזה סיעודית": 1,
@@ -514,6 +509,11 @@ def preprocess(data: pd.DataFrame,
     data.drop(columns=Columns.TUMOR_WIDTH, inplace=True)
     data[Columns.ER] = data[Columns.ER].apply(filter_er)
     data[Columns.PR] = data[Columns.PR].apply(filter_pr)
+    data[Columns.DIAGNOSIS_DATE] = pd.to_datetime(
+        data[Columns.DIAGNOSIS_DATE], errors='coerce')
+    data[Columns.SURGERY_BEFORE_AFTER_ACTIVITY_DATE] = pd.to_datetime(
+        data[Columns.SURGERY_BEFORE_AFTER_ACTIVITY_DATE],
+        errors='coerce')
     data[Columns.AGGRESSIVENESS] = data.apply(
         lambda row: aggressiveness_by_activity_timing(
             row[Columns.DIAGNOSIS_DATE],
@@ -539,7 +539,8 @@ def preprocess(data: pd.DataFrame,
 if __name__ == "__main__":
     df = pd.read_csv('../train_test_splits/train_split.feats.csv',
                      encoding='utf-8-sig')
+    df = preprocess(df)
     # print(df.columns)
-    print(preprocess(df).info())
-    df.to_csv("temp.csv", encoding='utf-8-sig')
+    print(df.info())
+    # df.to_csv("temp.csv", encoding='utf-8-sig')
     # print(df.iloc[:, :].info())
