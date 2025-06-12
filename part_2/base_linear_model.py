@@ -23,5 +23,6 @@ mse_ridge = mean_squared_error(y_test, y_pred_ridge)
 print(f"Linear Regression MSE: {mse_lin:.2f}")
 print(f"Ridge Regression (alpha=1000) MSE: {mse_ridge:.2f}")
 
+#
 #pd.Series(y_pred_lin).to_csv("linear_predictions.csv", index=False, header=False)
 #pd.Series(y_pred_ridge).to_csv("ridge_predictions.csv", index=False, header=False)
