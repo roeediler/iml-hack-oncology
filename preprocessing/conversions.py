@@ -1,6 +1,6 @@
 class Columns:
-    FORM = "Form Name"
-    HOSPITAL = "Hospital"
+    FORM = " Form Name"
+    HOSPITAL = " Hospital"
     USER_NAME = "User Name"
     AGE = "אבחנה-Age"
     BASIC_STAGE = "אבחנה-Basic stage"
@@ -21,9 +21,11 @@ class Columns:
     SURGERY_DATE1 = "אבחנה-Surgery date1"
     SURGERY_DATE2 = "אבחנה-Surgery date2"
     SURGERY_DATE3 = "אבחנה-Surgery date3"
+    SURGERY_DATES_NAMES = [SURGERY_DATE1, SURGERY_DATE2, SURGERY_DATE3]
     SURGERY_NAME1 = "אבחנה-Surgery name1"
     SURGERY_NAME2 = "אבחנה-Surgery name2"
     SURGERY_NAME3 = "אבחנה-Surgery name3"
+    SURGERY_NAMES_NAMES = [SURGERY_NAME1, SURGERY_NAME2, SURGERY_NAME3]
     SURGERY_SUM = "אבחנה-Surgery sum"
     TUMOR_MARK = "אבחנה-T -Tumor mark (TNM)"
     TUMOR_DEPTH = "אבחנה-Tumor depth"
@@ -33,7 +35,10 @@ class Columns:
     SURGERY_BEFORE_AFTER_ACTIVITY_DATE = "surgery before or after-Activity date"
     SURGERY_BEFORE_AFTER_ACTUAL_ACTIVITY = "surgery before or after-Actual activity"
     ID = "id-hushed_internalpatientid"
-
+    # created columns -
+    SURGERY_DATE_AVERAGE_WAIT = "Surgery date average wait"
+    SURGERY_NAMES_SCORE = "Surgery names score"
+    AGGRESSIVENESS = "aggressiveness_by_activity_timing"
 
 month_prefix = [
     "Jan",
@@ -69,4 +74,4 @@ def equiv_pos(val: str) -> bool:
 
 
 def equiv_neg(val: str) -> bool:
-    return "neg" in val or "akhkh" in val
+    return "neg" in val or "akhkh" in val or "(-)" in val
