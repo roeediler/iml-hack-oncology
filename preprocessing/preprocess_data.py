@@ -4,12 +4,13 @@ from datetime import datetime
 import numpy as np
 from typing import Callable, Optional, Any
 
+from preprocessing.data_completion import DataComplete, DefaultValue
 from preprocessing.conversions import (
     Columns, month_prefix, equiv_low, equiv_mid, equiv_high,
     equiv_neg, equiv_pos
 )
 
-MISSING_VALUE_DEFAULT = -1
+MISSING_VALUE_DEFAULT = np.nan
 
 
 def to_lower(val: str) -> str:
@@ -353,7 +354,8 @@ def rank_surgery_by_name(surgery_name):
     return 1
 
 
-def preprocess(data: pd.DataFrame) -> pd.DataFrame:
+def preprocess(data: pd.DataFrame,
+               data_complete: DataComplete = DefaultValue()) -> pd.DataFrame:
     data[Columns.FORM] = data[Columns.FORM].map({
         "אומדן סימפטומים ודיווח סיעודי": 3,
         "אנמנזה סיעודית": 1,
@@ -364,7 +366,7 @@ def preprocess(data: pd.DataFrame) -> pd.DataFrame:
         "ביקור במרפאה המטו-אונקולוגית": 5,
         "ביקור במרפאה קרינה": 7,
         "דיווח סיעודי": 2,
-        None: MISSING_VALUE_DEFAULT
+        None: np.nan
     })
     data.drop(columns=Columns.HOSPITAL, inplace=True)
     data.drop(columns=Columns.USER_NAME, inplace=True)
@@ -404,8 +406,7 @@ def preprocess(data: pd.DataFrame) -> pd.DataFrame:
             ("L1", 2),
             ("L2", 3)
         ],
-        mapper=to_upper,
-        default=0
+        mapper=to_upper
     ))
     data[Columns.METASTASES_MARK] = data[
         Columns.METASTASES_MARK].apply(replace_contains(
@@ -423,7 +424,7 @@ def preprocess(data: pd.DataFrame) -> pd.DataFrame:
         "נקיים": 0,
         "ללא": 1,
         "נגועים": 2,
-        None: 3
+        None: np.nan
     })
     data[Columns.LYMPH_NODES_MARK] = data[
         Columns.LYMPH_NODES_MARK].apply(filter_tnm_n)
@@ -432,8 +433,8 @@ def preprocess(data: pd.DataFrame) -> pd.DataFrame:
     data[Columns.POSITIVE_NODES] = data[
         Columns.POSITIVE_NODES].apply(filter_positive_nodes)
     data[Columns.SIDE] = data[Columns.SIDE].map({
-        "": 0,
-        None: 0,
+        "": np.nan,
+        None: np.nan,
         "שמאל": 1,
         "ימין": 1,
         "דו צדדי": 2
@@ -523,7 +524,8 @@ def preprocess(data: pd.DataFrame) -> pd.DataFrame:
         Columns.SURGERY_BEFORE_AFTER_ACTUAL_ACTIVITY].apply(rank_surgery_by_name)
     data.drop(columns=Columns.ID, inplace=True)
 
-    data = data.fillna(0)
+    # data = data.fillna(0)
+    data = data_complete.complete(data)
 
     return data
 
