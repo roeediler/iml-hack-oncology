@@ -173,6 +173,7 @@ def preprocess(data: pd.DataFrame):
         "M1b": 4                # More severe/metastasis - subcategory
     })
     data[Columns.MARGIN_TYPE].map({
+        #update
         "נקיים": 0,
         "ללא": 1,
         "נגועים": 2,
