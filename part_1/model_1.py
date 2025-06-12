@@ -27,7 +27,10 @@ np.random.seed(42)
 top_k = 3
 
 # ---- 1. Import the data ----
-father_folder = os.path.dirname(os.getcwd())
+X_full = pd.read_csv('train_test_splits/train.feats.csv')
+preprocess(X_full)
+print("Full training features shape:", X_full.shape)
+# Load the training features and labels
 X = pd.read_csv('train_test_splits/train_split.feats.csv')
 y_raw = pd.read_csv('train_test_splits/train_split.labels.0.csv')
 
@@ -123,7 +126,7 @@ print(f"Best cross-validation score for AdaBoost: {random_search_ada.best_score_
 best_ada = AdaBoostClassifier(
     n_estimators=best_params_ada['base_estimator__n_estimators'],
     learning_rate=best_params_ada['base_estimator__learning_rate'],
-    base_estimator=DecisionTreeClassifier(
+    estimator=DecisionTreeClassifier(
         max_depth=best_params_ada['base_estimator__estimator__max_depth']
     ),
     random_state=42
@@ -143,16 +146,27 @@ print(classification_report(y_test, y_pred_ada, target_names=mlb.classes_))
 
 # Convert prediction vectors to lists of metastasis sites using mlb.classes_
 def vectors_to_metastasis_lists(y_pred, mlb):
-    return [
+    preds = [
         [mlb.classes_[i] for i, val in enumerate(row) if int(val) == 1]
         for row in y_pred
     ]
+    # remove 'None' from the lists
+    preds = [[label for label in labels if label != 'None'] for labels in preds]
+    # convert the inner lists to strings
+    preds = [str(labels) for labels in preds]
+    preds = pd.DataFrame(preds, columns=['אבחנה-Location of distal metastases'])
+    return preds
 
+# Make predictions on the test set
 y_preds = classifier_chain_ada.predict(X_test_feats)
-
-# Example usage:
 y_preds = vectors_to_metastasis_lists(y_preds, mlb)
-
 # Save predictions to CSV
-predictions_df = pd.DataFrame(y_preds, columns=['אבחנה-Location of distal metastases'])
-predictions_df.to_csv('train_test_splits/predictions_metastases.csv', index=False, header=False)
+y_preds.to_csv('train_test_splits/predictions_metastases.csv', index=False, encoding='utf-8-sig', header=True)
+
+
+
+# Make predictions on the full training set to ensure consistency
+y_full_preds = classifier_chain_ada.predict(X_full)
+y_full_preds = vectors_to_metastasis_lists(y_full_preds, mlb)
+# Save full predictions to CSV
+y_full_preds.to_csv('train_test_splits/train_predictions_metastasis.csv', index=False, encoding='utf-8-sig', header=True)
