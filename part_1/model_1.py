@@ -31,6 +31,10 @@ father_folder = os.path.dirname(os.getcwd())
 X = pd.read_csv('train_test_splits/train_split.feats.csv')
 y_raw = pd.read_csv('train_test_splits/train_split.labels.0.csv')
 
+# Load the test features for the final predictions
+X_test_feats = pd.read_csv('train_test_splits/test.feats.csv')
+preprocess(X_test_feats)
+
 # change the column name to 'metastasis' for consistency
 y_raw.rename(columns={'אבחנה-Location of distal metastases': 'metastasis'}, inplace=True)
 
@@ -76,18 +80,29 @@ print("Macro-F1:", f1_score(y_test, y_pred_topk, average='macro'))
 
 
 # --- 6. Randomized Search for Hyperparameter Tuning ---
-# Define hyperparameter space for AdaBoost
+
+# Split the training data into a smaller training and validation set for hyperparameter tuning
+X_train_val, X_test_val, y_train_val, y_test_val = train_test_split(X_train, y_train, test_size=0.8, random_state=42)
+
+# Define parameter grid for AdaBoostClassifier
 param_dist_ada = {
-    'n_estimators': np.arange(25, 401, 25),
-    'learning_rate': np.linspace(0.01, 2.0, 20),
-    'estimator': [
-        DecisionTreeClassifier(max_depth=d) for d in range(1, 6)
-    ], 
+    'base_estimator__n_estimators': np.arange(25, 201, 25),
+    'base_estimator__learning_rate': np.linspace(0.01, 2.0, 20),
+    'base_estimator__estimator__max_depth': [1, 2, 3, 4, 5, 6]
 }
 
+# Create base estimator
+base_ada = AdaBoostClassifier(
+    estimator=DecisionTreeClassifier(),
+    random_state=42
+)
+
+# Create ClassifierChain
+classifier_chain = ClassifierChain(base_ada, random_state=42)
+
 # Set up random search for AdaBoost
-random_search_ada = ClassifierChain(RandomizedSearchCV(
-    estimator=AdaBoostClassifier(random_state=42),
+random_search_ada = RandomizedSearchCV(
+    estimator=classifier_chain,
     param_distributions=param_dist_ada,
     n_iter=20,
     cv=5,
@@ -95,13 +110,49 @@ random_search_ada = ClassifierChain(RandomizedSearchCV(
     verbose=1,
     n_jobs=-1,
     random_state=42
-), order='random', random_state=42)
+)
 
-random_search_ada.fit(X_train, y_train)
+# Fit the model
+random_search_ada.fit(X_train_val, y_train_val)
+
+# Train the final model with best parameters on the full training set
+best_params_ada = random_search_ada.best_params_
+print(f"Best parameters for AdaBoost: {best_params_ada}")
+print(f"Best cross-validation score for AdaBoost: {random_search_ada.best_score_:.4f}")
+# Train the final model with best parameters on full training set
+best_ada = AdaBoostClassifier(
+    n_estimators=best_params_ada['base_estimator__n_estimators'],
+    learning_rate=best_params_ada['base_estimator__learning_rate'],
+    base_estimator=DecisionTreeClassifier(
+        max_depth=best_params_ada['base_estimator__estimator__max_depth']
+    ),
+    random_state=42
+)
+
+classifier_chain_ada = ClassifierChain(best_ada, random_state=42)
+
+# Fit the final model on the full training set
+classifier_chain_ada.fit(X_train, y_train)
 
 # Predict on test/validation split
-y_pred_ada = random_search_ada.predict(X_test)
+y_pred_ada = classifier_chain_ada.predict(X_test)
 
 # Print classification report
 print("AdaBoost Classification report:")
 print(classification_report(y_test, y_pred_ada, target_names=mlb.classes_))
+
+# Convert prediction vectors to lists of metastasis sites using mlb.classes_
+def vectors_to_metastasis_lists(y_pred, mlb):
+    return [
+        [mlb.classes_[i] for i, val in enumerate(row) if int(val) == 1]
+        for row in y_pred
+    ]
+
+y_preds = classifier_chain_ada.predict(X_test_feats)
+
+# Example usage:
+y_preds = vectors_to_metastasis_lists(y_preds, mlb)
+
+# Save predictions to CSV
+predictions_df = pd.DataFrame(y_preds, columns=['אבחנה-Location of distal metastases'])
+predictions_df.to_csv('train_test_splits/predictions_metastases.csv', index=False, header=False)
