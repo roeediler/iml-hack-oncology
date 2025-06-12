@@ -4,8 +4,10 @@ from datetime import datetime
 import numpy as np
 from typing import Callable, Optional, Any
 
-from conversions import (Columns, month_prefix, equiv_low, equiv_mid,
-                         equiv_high, equiv_neg, equiv_pos)
+from preprocessing.conversions import (
+    Columns, month_prefix, equiv_low, equiv_mid, equiv_high,
+    equiv_neg, equiv_pos
+)
 
 MISSING_VALUE_DEFAULT = -1
 
@@ -436,6 +438,7 @@ def preprocess(data: pd.DataFrame) -> pd.DataFrame:
         "ימין": 1,
         "דו צדדי": 2
     })
+    data.drop(columns=Columns.STAGE, inplace=True)  # TODO
     for col in Columns.SURGERY_DATES_NAMES:
         data[col] = pd.to_datetime(data[col], errors='coerce')
     data[Columns.SURGERY_DATE_AVERAGE_WAIT] = data.apply(
@@ -499,6 +502,8 @@ def preprocess(data: pd.DataFrame) -> pd.DataFrame:
     data[Columns.SURGERY_BEFORE_AFTER_ACTUAL_ACTIVITY] = data[
         Columns.SURGERY_BEFORE_AFTER_ACTUAL_ACTIVITY].apply(rank_surgery_by_name)
     data.drop(columns=Columns.ID, inplace=True)
+
+    data = data.fillna(0)
 
     return data
 
