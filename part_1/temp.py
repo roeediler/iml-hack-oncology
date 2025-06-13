@@ -1,1 +1,0 @@
-python src/evaluate_part_0.py --gold=C:\Users\roeed\OneDrive\Documents\Projects\iml-hack-oncology/train_test_splits/train.labels.0.csv  --pred=C:\Users\roeed\OneDrive\Documents\Projects\iml-hack-oncology/train_test_splits/train_predictions_metastasis.csv
